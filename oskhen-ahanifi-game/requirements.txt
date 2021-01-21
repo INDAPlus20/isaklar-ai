@@ -1,0 +1,4 @@
+arcade==2.4.3
+pymunk==5.7.0
+numpy==1.19.4
+dataclasses==0.8
