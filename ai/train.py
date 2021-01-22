@@ -64,7 +64,7 @@ enemy = None
 
 frame_stack = deque() # a stack of three frames to more acurately see motion
 
-previous_action = None
+previous_action = 0
 previous_input = np.zeros((grid_size + 4)*3).reshape(-1, (grid_size + 4)*3)
 
 replay_mem = list()
@@ -78,7 +78,7 @@ for y_mov in range(0, 3):
         dictionary.append([(0, x_mov), (1, y_mov), (2, 1), (3, 1)])
 
 def calc_reward(previous, current):
-    damage_reward = -1
+    damage_reward = -1000
     death_reward = -1
     loss_reward = -2
     win_reward = 2
@@ -194,6 +194,7 @@ def predict(agent, observations, action_space):
 
         # now train on the data
         model.train_on_batch(inputs, targets)
+        replay_mem.clear()
         print("finished training")
 
         # Save trained model weights and architecture
@@ -229,12 +230,13 @@ def predict(agent, observations, action_space):
             if random.random() < epsilon:
                 
                 action = random.randrange(num_actions)
-            elif steps%3:
-                action = previous_action
-            else:
+            elif (steps%3) == 0:
                 # make prediction
+                
                 q = model.predict(np_input)
                 action = np.argmax(q[0])
+            else:
+                action = previous_action
 
             # save
             previous_action = action
