@@ -7,27 +7,23 @@ from tensorflow.keras.optimizers import SGD
 from tensorflow.keras.models import model_from_json
 
 import json
-
-#from tensorflow.keras.models import load_model
-
 from collections import deque
+import random
 
 grid_size = 56*32 # size of the game board
 hidden_size = 100 # amount of hidden neurons per layer
-num_actions = 32
+num_actions = 36
+epsilon = 0.1 # exploration
 
 # initialize the model
 
-with open("ai/model.json", "r") as jfile:
-        model = model_from_json(json.load(jfile))
-model.load_weights("ai/model.h5")
-model.compile("sgd", "mse")
-#model = Sequential()
-#model.add(Dense(hidden_size,  activation='relu')) #input_shape=(None, None, 2),
-#model.add(Dense(hidden_size, activation='relu'))
-#model.add(Dense(num_actions))
-#model.compile(SGD(lr=.2), "mse")
-#model.load_weights("model.h5")
+model = Sequential()
+model.add(Dense(hidden_size,  activation='relu')) #input_shape=(None, None, 2),
+model.add(Dense(hidden_size, activation='relu'))
+model.add(Dense(num_actions))
+model.compile(SGD(lr=.2), "mse")
+model.load_weights("ai/model")
+
 
 player = None
 enemy = None
@@ -47,7 +43,7 @@ for y_mov in range(0, 3):
 def predict(agent, observations, action_space):
     global player
     player = agent.player
-    flat_obs = np.zeros(grid_size + 4) # might have to preallocate some memory here with [[0,0]*32]*52
+    flat_obs = np.zeros(grid_size + 4) 
     # parse and format observations
     i = 0
     for x in observations:
@@ -83,16 +79,16 @@ def predict(agent, observations, action_space):
     flat_obs[grid_size + 2] = enemy.health
     flat_obs[grid_size + 3] = enemy.lives
 
+    global frame_stack
     # add to stack
     frame_stack.append(flat_obs)
     if len(frame_stack) > 3:
         frame_stack.popleft()
 
 
-
     # predict
     action = 0
-    if len(frame_stack) == 3: 
+    if len(frame_stack) > 2: 
         
         # format input
         input = list()
@@ -100,11 +96,15 @@ def predict(agent, observations, action_space):
         input.extend(frame_stack[1])
         input.extend(frame_stack[2])
         np_input = np.array(input).reshape(-1, len(input))
-        
 
-        # make prediction
-        q = model.predict(np_input)
-        action = np.argmax(q[0])
+        if random.random() < epsilon:
+            action = random.randrange(num_actions)
+        else:
+            global model
+            # make prediction
+            q = model.predict(np_input)
+            action = np.argmax(q[0])
+        #print(q)
 
     # parse action
     global dictionary

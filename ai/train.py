@@ -18,7 +18,6 @@ from tensorflow import keras
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import Dense
 from tensorflow.keras.optimizers import SGD
-from tensorflow.keras.models import model_from_json
 
 from collections import deque
 import random
@@ -40,20 +39,16 @@ steps = 0 # amount of timesteps taken since training
 
 model = ai_interface.model
 if model == None:
-    print("No model in ai_inteface")
+    
+    model = Sequential()
+    model.add(Dense(hidden_size,  activation='relu')) #input_shape=(None, None, 2),
+    model.add(Dense(hidden_size, activation='relu'))
+    model.add(Dense(num_actions))
+    model.compile(SGD(lr=.01, clipnorm=1.0), loss="mse")
     try:
-        with open("ai/model.json", "r") as jfile:
-            model = model_from_json(json.load(jfile))
-            model.load_weights("ai/model.h5")
-            model.compile(SGD(lr=.2), "mse")
-            print("found model!")
+        model.load_weights("ai/model")
     except:
-       print("no weights found")
-       model = Sequential()
-       model.add(Dense(hidden_size,  activation='relu')) #input_shape=(None, None, 2),
-       model.add(Dense(hidden_size, activation='relu'))
-       model.add(Dense(num_actions))
-       model.compile(SGD(lr=.2), "mse")
+        print("No weights found")
 
 ai_interface.model = model
 
@@ -200,7 +195,7 @@ def predict(agent, observations, action_space):
         # Save trained model weights and architecture
         global episodes_until_save
         if steps/cutoff >= episodes_until_save:
-            model.save_weights("ai/model.h5", overwrite=True)
+            model.save_weights("ai/model")
             with open("ai/model.json", "w") as outfile:
                 json.dump(model.to_json(), outfile)
             steps = 0
@@ -221,10 +216,7 @@ def predict(agent, observations, action_space):
             reward = calc_reward(frame_stack[1], frame_stack[2])
             
             replay_mem.append((previous_input, previous_action, np_input, reward))
-            #if len(replay_mem) > max_memory:
-            #    replay_mem.popleft()
-            # print(len(replay_mem))
-            # save input
+
             previous_input = np_input
             
             if random.random() < epsilon:
@@ -232,8 +224,8 @@ def predict(agent, observations, action_space):
                 action = random.randrange(num_actions)
             elif (steps%3) == 0:
                 # make prediction
-                
                 q = model.predict(np_input)
+                print(q)
                 action = np.argmax(q[0])
             else:
                 action = previous_action
